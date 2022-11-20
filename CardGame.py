@@ -101,13 +101,18 @@ def generateDealerCard(x):
     screen.blit(text,(dealerX + x, dealerY))
     return value, colorstring
 
+
+
+
 def checkScore(x,y):
-     tempscore = 0
-     for v in x: 
-         if y[v] == 'B':
-             tempscore = tempscore + v
+     tempscore = 0 
+     z = len(x) 
+     for p in range(0,z):
+         if y[p] == "B":
+             tempscore = tempscore + int(x[p])
          else:
-            tempscore = tempscore - v
+             tempscore = tempscore - int(x[p])
+             
      return tempscore
     
 
@@ -136,14 +141,17 @@ while running:
                 playerscore, color = generatePlayerCard(playercardCount)
                 playerscorelist.append(playerscore)
                 playercolor.append(color)
-                x1 = checkScore(playerscorelist, playercolor)
-                print(x1)
+                
                 
             
             
         if event.type == pygame.QUIT:
             pygame.quit()
             running = False
+    x1 = checkScore(playerscorelist, playercolor)
+    print(x1)
+    x2 = checkScore(dealerscorelist, dealercolor)
+    print(x2)
         
             
     pygame.display.update()
