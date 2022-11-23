@@ -23,12 +23,16 @@ dealercolor = []
 playerscorelist = []
 playercolor = []
 playercardCount = 0
+dcardcount = 1
 playerX = 370
 playerY = 480
 dealerX = 370
 dealerY = 480 - 150
+endsim = 0
+
 ###Set Window Size
 screen = pygame.display.set_mode((800,600))
+
 
 def createBoard():
     ###Title
@@ -101,9 +105,19 @@ def generateDealerCard(x):
     screen.blit(text,(dealerX + x, dealerY))
     return value, colorstring
 
-
-
-
+def dealerplay(x):
+    x1 =  checkScore(dealerscorelist, dealercolor)
+    play = True
+    while play:
+        x1 =  checkScore(dealerscorelist, dealercolor)
+        if x1 >= 17 or x1 <= 0:
+            play = False
+        else:
+            x = x + 1
+            dealerscore, dcolor = generateDealerCard(x)
+            dealerscorelist.append(dealerscore)
+            dealercolor.append(dcolor)
+            
 def checkScore(x,y):
      tempscore = 0 
      z = len(x) 
@@ -112,8 +126,33 @@ def checkScore(x,y):
              tempscore = tempscore + int(x[p])
          else:
              tempscore = tempscore - int(x[p])
-             
      return tempscore
+
+def checkstate(player,dealer):
+    
+    if player > 21 or player <= 0:
+        print("Player busted out with {}".format(player))
+        return False 
+    
+    if dealer > 21 or dealer <= 0:
+        print("Dealer busted out with {}".format(dealer))
+        return False
+    
+    if endsim == 1 and (dealer < 21 or dealer > 1) and (player < 21 or dealer > 1):
+        if dealer > player :
+            print("Dealer wins")
+            return False
+            
+        elif dealer == player:
+            print("Draw")
+            return False
+        else:
+            print("Player Wins")
+            
+    else:
+        return True
+        
+    
     
 
 
@@ -137,21 +176,34 @@ while running:
             playercardCount = playercardCount + 1
         else:
             if event.type == pygame.KEYDOWN:
-                playercardCount = playercardCount + 1
-                playerscore, color = generatePlayerCard(playercardCount)
-                playerscorelist.append(playerscore)
-                playercolor.append(color)
+                if event.key == pygame.K_RETURN:
+                    playercardCount = playercardCount + 1
+                    playerscore, color = generatePlayerCard(playercardCount)
+                    playerscorelist.append(playerscore)
+                    playercolor.append(color)
+                if event.key == pygame.K_BACKSPACE:
+                    dealerplay(dcardcount)
+                    endsim =1
                 
+
+                    
+                    
                 
-            
             
         if event.type == pygame.QUIT:
             pygame.quit()
             running = False
+    
     x1 = checkScore(playerscorelist, playercolor)
-    print(x1)
     x2 = checkScore(dealerscorelist, dealercolor)
-    print(x2)
+    
+    
+    if x1 == 21:
+        dealerplay(dcardcount)
+        endsim=1
+    running = checkstate(x1, x2)
+ 
+        
         
             
     pygame.display.update()
