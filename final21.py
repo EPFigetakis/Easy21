@@ -11,7 +11,6 @@ import random
 from gym import Env
 from gym.spaces import Discrete, Box
 import numpy as np 
-import random 
 
 
 pygame.init()
@@ -54,39 +53,37 @@ def randcolor(min=0,max=2):
     return color,colorstring
 
 def generatePlayerCard(x):
-    if x <= 1:
-        x = x
+    c = len(x)
+    if c <= 1:
         color = BLACK
         colorstring = 'B'
     else:
-        x = (x * 16)
         color,colorstring = randcolor()
     value = randint()
     return value, colorstring
 
 def generateDealerCard(x):
-    if x <= 1:
-        x = x
+    c = len(x)
+    if c <= 1:
         color = BLACK
         colorstring = 'B'
     else:
-        x = (x * 16)
         color,colorstring = randcolor()
     value = randint()
     return value, colorstring
 
-def dealerplay(x):
+def dealerplay():
     x1 =  checkScore(dealerscorelist, dealercolor)
     play = True
     while play:
         x1 =  checkScore(dealerscorelist, dealercolor)
-        if x1 >= 17 or x1 <= 0:
+        if x1 >= 17:
             play = False
         else:
-            x = x + 1
-            dealerscore, dcolor = generateDealerCard(x)
+            dealerscore, dcolor = generateDealerCard(dealerscorelist)
             dealerscorelist.append(dealerscore)
             dealercolor.append(dcolor)
+            
             
 def checkScore(x,y):
      tempscore = 0 
@@ -99,29 +96,13 @@ def checkScore(x,y):
      return tempscore
  
     
-def checkstate(player,dealer):
+def bustout(x):
     
-    if player > 21 or player <= 0:
-        print("Player busted out with {}".format(player))
-        return False 
+    if x > 21 or x <= 0:
+        return True 
     
-    if dealer > 21 or dealer <= 0:
-        print("Dealer busted out with {}".format(dealer))
-        return False
-    
-    if endsim == 1 and (dealer < 21 or dealer > 1) and (player < 21 or dealer > 1):
-        if dealer > player :
-            print("Dealer wins")
-            return False
+
             
-        elif dealer == player:
-            print("Draw")
-            return False
-        else:
-            print("Player Wins")
-            
-    else:
-        return True
 
 
 def renderscreen():
@@ -187,57 +168,90 @@ def addscoredealer(x):
 
 class Easy21(Env):
     def __init__(self):
-        self.sim_length = 0
-        global pscore
-        pscore = 0
-        global dscore
-        dscore = 0
-        self.action_space = [0,1]
-        self.observation_space = np.arange(1,22,1).tolist()
-        if self.sim_length == 0:
-            addscoreplayer(self.sim_length)
-            addscoredealer(self.sim_length)
-            self.sim_length += 1
-        pscore = checkScore(playerscorelist, playercolor)
-        self.state = pscore
-        
-    def step(self,action):
-        if self.action == 0: 
-            addscoreplayer(self.sim_length)
-        if self.action == 1:
-            dealerplay(self.sim_length)
-            endsim = 1
-        pscore = checkScore(playerscorelist, playercolor)
+        addscoredealer(dealerscorelist)
         dscore = checkScore(dealerscorelist, dealercolor)
+        addscoreplayer(playerscorelist)
+        pscore = checkScore(playerscorelist, playercolor)
         
-        if endsim == 1 and (dscore < 21 or dscore > 1) and (pscore < 21 or pscore > 1):
-            if dscore > pscore :
-                print("Dealer Wins")
-                reward =- 1
-                self.sim_length = 987654321
-            elif dscore == pscore :
-                print("Draw")
-                reward = 0
-                self.sim_length = 987654321
-            else:
-                reward = 1 
-                print('Player Wins')
-                self.sim_length = 987654321
-        if pscore > 21 or pscore <= 0:
-            print("Player busted out with {}".format(pscore))
-            self.sim_length = 987654321
-        if dscore > 21 or dscore <= 0:
-            print("Player busted out with {}".format(dscore))
-            self.sim_length = 987654321
-        if self.sim_length == 987654321:
-            done = True
+        self.state = {"DealerScore" : dscore, "PlayerScore" :pscore}
+        self.actions = ("hit","stick")
+        init_state = self.state.copy()
+        self.history = [init_state]
+        
+    def step(self,state, action):
+        self.history.append({'player':action})
+        
+        if action == 'hit':
+            addscoreplayer(playerscorelist)
+            pscore = checkScore(playerscorelist, playercolor)
+            self.state['PlayerScore'] = pscore
+            new_state = self.state.copy()
+            
+            if bustout(self.state['PlayerScore']):
+                reward = -1
+                state = "terminal"
+                self.history.append(state)
+                return state, reward
         else:
-            done = False
-        self.state = pscore
-        self.sim_length += 1
-        info = {}
+            new_state = self.state.copy()
+            self.history.append(new_state)
+            state, reward = self.dealerplay()
+            return state,reward
         
-        return self.state, reward, done, info
+    def dealerplay(self):
+        while self.state['DealerScore'] < 17:
+            addscoredealer(dealerscorelist)
+            ndscore = checkScore(dealerscorelist, dealercolor)
+            self.state['DealerScore'] = ndscore
+            
+            new_state = self.state.copy()
+            self.history.append(({'dealer':'hit'}))
+            self.history.append(new_state)
+            
+            if bustout(ndscore):
+                reward = 1
+                state = 'terminal'
+                self.history.append(state)
+                print(state,reward)
+                return state, reward
+            
+        self.history.append({"dealer:stick"})
+        pscore = self.state['PlayerScore']
+        dscore = self.state['DealerScore']
+        
+        state = 'terminal'
+        if dscore< pscore: # player wins
+            reward = 1
+            print(state,reward)
+            return state, reward                    
+        if dscore == pscore: # draw
+            reward = 0
+            print(state,reward)
+            return state, reward                 
+        if dscore > pscore: # player loses
+            reward = -1
+            print(state,reward)
+            return state, reward
+
+
+env = Easy21()
+state1 = env.state
+state2 = env.step(state1,'hit')
+state3 = env.step(state=state2, action="stick")
+print(env.history)
+
+'''
+addscoreplayer(playerscorelist)
+addscoreplayer(playerscorelist)
+x = checkScore(playerscorelist, playercolor)
+'''  
+            
+            
+            
+        
+        
+        
+        
             
             
         
